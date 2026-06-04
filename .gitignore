@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+target/
+bin/
+main
+vendor/
+.bundle/
+pkg/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+
+# DB
+postgres_data/
+*.db
+*.db-journal
+
+# Go
+order-service/order-service
+order-service/main_test

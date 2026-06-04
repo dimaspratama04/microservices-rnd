@@ -1,0 +1,20 @@
+{
+  "name": "payment-service",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "bun run index.ts"
+  },
+  "dependencies": {
+    "@types/pg": "^8.20.0",
+    "amqplib": "^0.10.3",
+    "drizzle-orm": "^0.45.2",
+    "elysia": "^0.8.0",
+    "pg": "^8.21.0"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.1",
+    "bun-types": "latest",
+    "drizzle-kit": "^0.31.10"
+  }
+}
