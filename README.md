@@ -4,12 +4,15 @@ This project is a microservices-based architecture research and development envi
 
 ## Architecture Overview
 
-- **Product Service (Java/Spring Boot):** Manages product inventory using PostgreSQL and H2 for testing.
-- **Order Service (Go/Fiber):** Handles customer orders using GORM and PostgreSQL.
-- **Payment Service (Node.js/Elysia):** Processes payments and sends events to RabbitMQ.
-- **Notification Service (Ruby/Bunny):** Consumes messages from RabbitMQ and processes notifications.
+| Service                  | Language/Runtime | Framework       | Database                  | Others                |
+| ------------------------ | ---------------- | --------------- | ------------------------- | --------------------- |
+| **Product Service**      | Java 17          | Spring Boot 3.2 | PostgreSQL, H2 (test)     | Maven                 |
+| **Order Service**        | Go 1.25          | Fiber v2        | PostgreSQL, SQLite (test) | GORM                  |
+| **Payment Service**      | TypeScript (Bun) | Elysia          | PostgreSQL                | Drizzle ORM, RabbitMQ |
+| **Notification Service** | Ruby             | Bunny           | PostgreSQL                | RabbitMQ              |
+
 - **PostgreSQL:** Shared database instance with separate databases for each service.
-- **RabbitMQ:** Message broker for asynchronous communication.
+- **RabbitMQ:** Message broker for asynchronous communication between Payment and Notification services.
 
 ## Prerequisites
 
@@ -19,12 +22,14 @@ This project is a microservices-based architecture research and development envi
 ## Getting Started
 
 1. **Clone the repository:**
+
    ```bash
    git clone <repository-url>
    cd microservices-rnd
    ```
 
 2. **Start the services:**
+
    ```bash
    docker compose up -d --build
    ```
@@ -39,6 +44,7 @@ This project is a microservices-based architecture research and development envi
 ### 1. Product Service (Port 8081)
 
 **Create Product:**
+
 ```bash
 curl -X POST http://localhost:8081/products \
 -H "Content-Type: application/json" \
@@ -49,11 +55,13 @@ curl -X POST http://localhost:8081/products \
 ```
 
 **Get All Products:**
+
 ```bash
 curl http://localhost:8081/products
 ```
 
 **Update Product:**
+
 ```bash
 curl -X PUT http://localhost:8081/products/1 \
 -H "Content-Type: application/json" \
@@ -64,6 +72,7 @@ curl -X PUT http://localhost:8081/products/1 \
 ```
 
 **Delete Product:**
+
 ```bash
 curl -X DELETE http://localhost:8081/products/1
 ```
@@ -73,6 +82,7 @@ curl -X DELETE http://localhost:8081/products/1
 ### 2. Order Service (Port 8080)
 
 **Create Order:**
+
 ```bash
 curl -X POST http://localhost:8080/orders \
 -H "Content-Type: application/json" \
@@ -84,11 +94,13 @@ curl -X POST http://localhost:8080/orders \
 ```
 
 **Get All Orders:**
+
 ```bash
 curl http://localhost:8080/orders
 ```
 
 **Update Order Status:**
+
 ```bash
 curl -X PUT http://localhost:8080/orders/1 \
 -H "Content-Type: application/json" \
@@ -98,6 +110,7 @@ curl -X PUT http://localhost:8080/orders/1 \
 ```
 
 **Delete Order:**
+
 ```bash
 curl -X DELETE http://localhost:8080/orders/1
 ```
@@ -107,7 +120,8 @@ curl -X DELETE http://localhost:8080/orders/1
 ### 3. Payment Service (Port 8082)
 
 **Process Payment:**
-*(This will also trigger a notification event to RabbitMQ)*
+_(This will also trigger a notification event to RabbitMQ)_
+
 ```bash
 curl -X POST http://localhost:8082/payments \
 -H "Content-Type: application/json" \

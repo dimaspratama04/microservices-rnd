@@ -2,9 +2,9 @@
 node_modules/
 target/
 bin/
-main
 vendor/
 .bundle/
+.mvn/
 pkg/
 
 # IDEs

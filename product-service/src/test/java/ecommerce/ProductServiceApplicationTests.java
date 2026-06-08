@@ -1,5 +1,6 @@
-package com.example.product_service;
+package ecommerce;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,15 +32,16 @@ class ProductServiceApplicationTests {
 		Product product = new Product("Laptop", 1200.0);
 
 		// Create
-		String json = mockMvc.perform(post("/products")
+		String responseJson = mockMvc.perform(post("/products")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(product)))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.name", is("Laptop")))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.message", is("Product created successfully")))
+				.andExpect(jsonPath("$.data.name", is("Laptop")))
 				.andReturn().getResponse().getContentAsString();
 
-		Product createdProduct = objectMapper.readValue(json, Product.class);
-		Long id = createdProduct.getId();
+		JsonNode rootNode = objectMapper.readTree(responseJson);
+		Long id = rootNode.path("data").path("id").asLong();
 
 		// Read All
 		mockMvc.perform(get("/products"))
@@ -52,20 +54,24 @@ class ProductServiceApplicationTests {
 				.andExpect(jsonPath("$.name", is("Laptop")));
 
 		// Update
-		createdProduct.setName("Gaming Laptop");
+		product.setName("Gaming Laptop");
 		mockMvc.perform(put("/products/" + id)
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(objectMapper.writeValueAsString(createdProduct)))
+				.content(objectMapper.writeValueAsString(product)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.name", is("Gaming Laptop")));
+				.andExpect(jsonPath("$.message", is("Product updated successfully")))
+				.andExpect(jsonPath("$.data.name", is("Gaming Laptop")));
 
 		// Delete
 		mockMvc.perform(delete("/products/" + id))
-				.andExpect(status().isOk());
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.message", is("Product deleted successfully")))
+				.andExpect(jsonPath("$.id", is(id.intValue())));
 
 		// Verify Delete
 		mockMvc.perform(get("/products/" + id))
-				.andExpect(status().isNotFound());
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.error", is("Product not found")));
 	}
 
 }

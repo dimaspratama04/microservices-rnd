@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -32,29 +33,33 @@ func initDB() {
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
-
-	DB.AutoMigrate(&Order{})
 }
 
-func main() {
+func SetupApp() *fiber.App {
 	app := fiber.New()
-
-	// Initialize DB if not in test mode
-	if os.Getenv("GO_ENV") != "test" {
-		initDB()
-	}
 
 	app.Get("/orders", func(c *fiber.Ctx) error {
 		var orders []Order
 		DB.Find(&orders)
-		return c.JSON(orders)
+		if len(orders) == 0 {
+			return c.JSON(fiber.Map{
+				"message": "No orders found",
+				"data":    []Order{},
+			})
+		}
+		return c.JSON(fiber.Map{
+			"message": "Orders retrieved successfully",
+			"data":    orders,
+		})
 	})
 
 	app.Get("/orders/:id", func(c *fiber.Ctx) error {
 		id := c.Params("id")
 		var order Order
 		if err := DB.First(&order, id).Error; err != nil {
-			return c.Status(404).SendString("Order not found")
+			return c.Status(404).JSON(fiber.Map{
+				"error": "Order not found",
+			})
 		}
 		return c.JSON(order)
 	})
@@ -62,8 +67,24 @@ func main() {
 	app.Post("/orders", func(c *fiber.Ctx) error {
 		order := new(Order)
 		if err := c.BodyParser(order); err != nil {
-			return c.Status(400).SendString(err.Error())
+			return c.Status(400).JSON(fiber.Map{
+				"error": "Invalid request body",
+			})
 		}
+
+		// Validate Product Existence
+		productSvcURL := os.Getenv("PRODUCT_SERVICE_URL")
+		if productSvcURL == "" {
+			productSvcURL = "http://localhost:8081"
+		}
+
+		productResp, err := http.Get(fmt.Sprintf("%s/products/%d", productSvcURL, order.ProductID))
+		if err != nil || productResp.StatusCode != 200 {
+			return c.Status(400).JSON(fiber.Map{
+				"error": "Product not found or product service unavailable",
+			})
+		}
+
 		order.Status = "Pending"
 		DB.Create(&order)
 
@@ -80,31 +101,57 @@ func main() {
 			}()
 		}
 
-		return c.Status(201).JSON(order)
+		return c.Status(201).JSON(fiber.Map{
+			"message": "Order created successfully",
+			"data":    order,
+		})
 	})
 
 	app.Put("/orders/:id", func(c *fiber.Ctx) error {
 		id := c.Params("id")
 		var order Order
 		if err := DB.First(&order, id).Error; err != nil {
-			return c.Status(404).SendString("Order not found")
+			return c.Status(404).JSON(fiber.Map{
+				"error": "Order not found",
+			})
 		}
 		if err := c.BodyParser(&order); err != nil {
-			return c.Status(400).SendString(err.Error())
+			return c.Status(400).JSON(fiber.Map{
+				"error": "Invalid request body",
+			})
 		}
 		DB.Save(&order)
-		return c.JSON(order)
+		return c.JSON(fiber.Map{
+			"message": "Order updated successfully",
+			"data":    order,
+		})
 	})
 
 	app.Delete("/orders/:id", func(c *fiber.Ctx) error {
 		id := c.Params("id")
 		var order Order
 		if err := DB.First(&order, id).Error; err != nil {
-			return c.Status(404).SendString("Order not found")
+			return c.Status(404).JSON(fiber.Map{
+				"error": "Order not found",
+			})
 		}
 		DB.Delete(&order)
-		return c.SendString("Order deleted")
+		return c.JSON(fiber.Map{
+			"message": "Order deleted successfully",
+			"id":      id,
+		})
 	})
+
+	return app
+}
+
+func main() {
+	// Initialize DB if not in test mode
+	if os.Getenv("GO_ENV") != "test" {
+		initDB()
+	}
+
+	app := SetupApp()
 
 	port := os.Getenv("PORT")
 	if port == "" {
