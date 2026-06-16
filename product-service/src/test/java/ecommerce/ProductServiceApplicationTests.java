@@ -1,5 +1,6 @@
 package ecommerce;
 
+import ecommerce.model.Product;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -29,7 +30,9 @@ class ProductServiceApplicationTests {
 
 	@Test
 	void testProductCRUD() throws Exception {
-		Product product = new Product("Laptop", 1200.0);
+		Product product = new Product();
+		product.setName("Laptop");		
+		product.setPrice(999.99);
 
 		// Create
 		String responseJson = mockMvc.perform(post("/products")
@@ -46,12 +49,12 @@ class ProductServiceApplicationTests {
 		// Read All
 		mockMvc.perform(get("/products"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$", hasSize(greaterThanOrEqualTo(1))));
+				.andExpect(jsonPath("$.data", hasSize(greaterThanOrEqualTo(1))));
 
 		// Read One
 		mockMvc.perform(get("/products/" + id))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.name", is("Laptop")));
+				.andExpect(jsonPath("$.data.name", is("Laptop")));
 
 		// Update
 		product.setName("Gaming Laptop");
@@ -66,12 +69,12 @@ class ProductServiceApplicationTests {
 		mockMvc.perform(delete("/products/" + id))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.message", is("Product deleted successfully")))
-				.andExpect(jsonPath("$.id", is(id.intValue())));
+				.andExpect(jsonPath("$.data", is(id.intValue())));
 
 		// Verify Delete
 		mockMvc.perform(get("/products/" + id))
 				.andExpect(status().isNotFound())
-				.andExpect(jsonPath("$.error", is("Product not found")));
+				.andExpect(jsonPath("$.message", is("Product not found")));
 	}
 
 }
