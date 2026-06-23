@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -76,10 +76,12 @@ services:
     build:
       context: ./notification-service
     ports:
-      - "8083:3000"
+      - "8083:8080"
     environment:
-      - DATABASE_URL=postgres://user:password@postgres:5432/notification_db
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - SPRING_RABBITMQ_HOST=localhost
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=guest
+      - SPRING_RABBITMQ_PASSWORD=guest
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,6 +1,6 @@
 # Microservices R&D Project
 
-This project is a microservices-based architecture research and development environment featuring multiple services built with different technologies (Java, Go, Node.js, Ruby). It demonstrates CRUD operations, inter-service communication, and message queuing.
+This project is a microservices-based architecture research and development environment featuring multiple services built with different technologies (Java, Go, TypeScript). It demonstrates CRUD operations, inter-service communication, and message queuing.
 
 ## Architecture Overview
 
@@ -9,7 +9,7 @@ This project is a microservices-based architecture research and development envi
 | **Product Service**      | Java 17          | Spring Boot 3.2 | PostgreSQL, H2 (test)     | Maven                 |
 | **Order Service**        | Go 1.25          | Fiber v2        | PostgreSQL, SQLite (test) | GORM                  |
 | **Payment Service**      | TypeScript (Bun) | Elysia          | PostgreSQL                | Drizzle ORM, RabbitMQ |
-| **Notification Service** | Ruby             | Bunny           | PostgreSQL                | RabbitMQ              |
+| **Notification Service** | Java 17          | Spring Boot 4.1 | -                         | Gradle, RabbitMQ      |
 
 - **PostgreSQL:** Shared database instance with separate databases for each service.
 - **RabbitMQ:** Message broker for asynchronous communication between Payment and Notification services.
@@ -135,7 +135,8 @@ curl -X POST http://localhost:8082/payments \
 ## Development & Testing
 
 - **Go Tests:** `cd order-service && go test -v`
-- **Java Tests:** `cd product-service && ./mvnw test`
+- **Java Tests (Product):** `cd product-service && ./mvnw test`
+- **Java Tests (Notification):** `cd notification-service && ./gradlew test`
 
 ## Environment Variables
 
