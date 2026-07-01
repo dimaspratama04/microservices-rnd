@@ -11,20 +11,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"order-service/domain"
 )
 
-func setupTestDB() {
-	var err error
-	DB, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+func setupTestDB() *gorm.DB {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
-	DB.AutoMigrate(&Order{})
+	db.AutoMigrate(&domain.Order{})
+	return db
 }
 
 func TestOrderCRUD(t *testing.T) {
 	os.Setenv("GO_ENV", "test")
-	setupTestDB()
+	db := setupTestDB()
 
 	// Mock Product Service
 	productSvc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -38,10 +39,10 @@ func TestOrderCRUD(t *testing.T) {
 	defer productSvc.Close()
 	os.Setenv("PRODUCT_SERVICE_URL", productSvc.URL)
 
-	app := SetupApp()
+	app := SetupApp(db)
 
 	// 1. Create - Success
-	newOrder := Order{ProductID: 1, Quantity: 2, Total: 100.0}
+	newOrder := domain.Order{ProductID: 1, Quantity: 2, Total: 100.0}
 	body, _ := json.Marshal(newOrder)
 	req := httptest.NewRequest("POST", "/orders", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -58,7 +59,7 @@ func TestOrderCRUD(t *testing.T) {
 	assert.Equal(t, "Pending", data["status"])
 
 	// 1.1 Create - Fail (Product Not Found)
-	newOrderFail := Order{ProductID: 99, Quantity: 1, Total: 50.0}
+	newOrderFail := domain.Order{ProductID: 99, Quantity: 1, Total: 50.0}
 	bodyFail, _ := json.Marshal(newOrderFail)
 	reqFail := httptest.NewRequest("POST", "/orders", bytes.NewBuffer(bodyFail))
 	reqFail.Header.Set("Content-Type", "application/json")
@@ -67,7 +68,7 @@ func TestOrderCRUD(t *testing.T) {
 	assert.Equal(t, 400, respFail.StatusCode)
 	var errResult map[string]interface{}
 	json.NewDecoder(respFail.Body).Decode(&errResult)
-	assert.Equal(t, "Product not found or product service unavailable", errResult["error"])
+	assert.Equal(t, "product not found or product service unavailable", errResult["error"])
 
 	// 2. Read All
 	req = httptest.NewRequest("GET", "/orders", nil)

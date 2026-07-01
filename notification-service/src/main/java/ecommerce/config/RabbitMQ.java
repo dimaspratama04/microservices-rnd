@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitMQ {
-    public static final String NOTIFICATION_QUEUE = "notification.created";
+    public static final String NOTIFICATION_QUEUE = "notifications";
 
     @Bean
     public Queue notificationWorker(){

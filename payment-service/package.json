@@ -6,10 +6,16 @@
     "start": "bun run index.ts"
   },
   "dependencies": {
+    "@elysia/opentelemetry": "^1.4.12",
+    "@elysiajs/opentelemetry": "^1.4.11",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-trace-otlp-proto": "^0.219.0",
+    "@opentelemetry/sdk-trace-node": "^2.8.0",
+    "@sinclair/typebox": "^0.34.0",
     "@types/pg": "^8.20.0",
     "amqplib": "^0.10.3",
     "drizzle-orm": "^0.45.2",
-    "elysia": "^0.8.0",
+    "elysia": "^1.4.29",
     "pg": "^8.21.0"
   },
   "devDependencies": {

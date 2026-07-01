@@ -1,8 +1,6 @@
-version: "3.8"
-
 services:
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
@@ -37,12 +35,16 @@ services:
       - DB_URL=postgres://user:password@postgres:5432/order_db?sslmode=disable
       - PRODUCT_SERVICE_URL=http://product-service:8081
       - PAYMENT_SERVICE_URL=http://payment-service:8082
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=order-service
     depends_on:
       postgres:
         condition: service_healthy
       product-service:
         condition: service_started
       payment-service:
+        condition: service_started
+      jaeger:
         condition: service_started
 
   product-service:
@@ -54,9 +56,14 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/product_db
       - SPRING_DATASOURCE_USERNAME=user
       - SPRING_DATASOURCE_PASSWORD=password
+      - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://jaeger:4318/v1/traces
+      - SPRING_APPLICATION_NAME=product-service
+      - OTEL_SERVICE_NAME=product-service
     depends_on:
       postgres:
         condition: service_healthy
+      jaeger:
+        condition: service_started
 
   payment-service:
     build:
@@ -66,11 +73,16 @@ services:
     environment:
       - DB_URL=postgres://user:password@postgres:5432/payment_db
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - ORDER_SERVICE_URL=http://order-service:8080
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=payment-service
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      jaeger:
+        condition: service_started
 
   notification-service:
     build:
@@ -78,15 +90,29 @@ services:
     ports:
       - "8083:8080"
     environment:
-      - SPRING_RABBITMQ_HOST=localhost
+      - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_PORT=5672
       - SPRING_RABBITMQ_USERNAME=guest
       - SPRING_RABBITMQ_PASSWORD=guest
+      - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://jaeger:4318/v1/traces
+      - SPRING_APPLICATION_NAME=notification-service
+      - OTEL_SERVICE_NAME=notification-service
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      jaeger:
+        condition: service_started
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686" # UI
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
 
 volumes:
   postgres_data:
