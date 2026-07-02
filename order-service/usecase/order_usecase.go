@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,14 +9,19 @@ import (
 	"order-service/domain"
 	"order-service/dto"
 	"os"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 type OrderUsecase interface {
 	GetOrders() ([]dto.OrderAPIResponse, error)
 	GetOrderByID(id string) (dto.OrderAPIResponse, error)
-	CreateOrder(req *dto.OrderAPIRequest) (dto.OrderAPIResponse, error)
-	UpdateOrder(id string, req *dto.OrderAPIRequest) (dto.OrderAPIResponse, error)
+	GetOrderByInvoiceID(invoiceID string) (dto.OrderAPIResponse, error)
+	CreateOrder(ctx context.Context, req *dto.CreateOrderAPIRequest) (dto.OrderAPIResponse, error)
+	UpdateOrder(id string, req *dto.CreateOrderAPIRequest) (dto.OrderAPIResponse, error)
 	UpdateOrderStatus(id string, status string) error
+	UpdateOrderStatusByInvoiceID(invoiceID string, status string) error
 	DeleteOrder(id string) error
 }
 
@@ -43,7 +49,15 @@ func (u *orderUsecase) GetOrderByID(id string) (dto.OrderAPIResponse, error) {
 	return dto.MapToOrderDTO(&order), nil
 }
 
-func (u *orderUsecase) CreateOrder(req *dto.OrderAPIRequest) (dto.OrderAPIResponse, error) {
+func (u *orderUsecase) GetOrderByInvoiceID(invoiceID string) (dto.OrderAPIResponse, error) {
+	order, err := u.repo.FindByInvoiceID(invoiceID)
+	if err != nil {
+		return dto.OrderAPIResponse{}, err
+	}
+	return dto.MapToOrderDTO(&order), nil
+}
+
+func (u *orderUsecase) CreateOrder(ctx context.Context, req *dto.CreateOrderAPIRequest) (dto.OrderAPIResponse, error) {
 	order := &domain.OrderModel{
 		ProductID: req.ProductID,
 		Quantity:  req.Quantity,
@@ -54,7 +68,15 @@ func (u *orderUsecase) CreateOrder(req *dto.OrderAPIRequest) (dto.OrderAPIRespon
 		productSvcURL = "http://localhost:8081"
 	}
 
-	productResp, err := http.Get(fmt.Sprintf("%s/products/%d", productSvcURL, order.ProductID))
+	reqProduct, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/products/%d", productSvcURL, order.ProductID), nil)
+	if err != nil {
+		return dto.OrderAPIResponse{}, err
+	}
+
+	// Inject OTEL trace context
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(reqProduct.Header))
+
+	productResp, err := http.DefaultClient.Do(reqProduct)
 	if err != nil || productResp.StatusCode != 200 {
 		return dto.OrderAPIResponse{}, errors.New("product not found or product service unavailable")
 	}
@@ -71,6 +93,7 @@ func (u *orderUsecase) CreateOrder(req *dto.OrderAPIRequest) (dto.OrderAPIRespon
 
 	order.Total = float64(order.Quantity) * productData.Data.Price
 	order.Status = "Pending"
+	order.Invoice = &domain.InvoiceModel{}
 	if err := u.repo.Create(order); err != nil {
 		return dto.OrderAPIResponse{}, err
 	}
@@ -78,7 +101,7 @@ func (u *orderUsecase) CreateOrder(req *dto.OrderAPIRequest) (dto.OrderAPIRespon
 	return dto.MapToOrderDTO(order), nil
 }
 
-func (u *orderUsecase) UpdateOrder(id string, req *dto.OrderAPIRequest) (dto.OrderAPIResponse, error) {
+func (u *orderUsecase) UpdateOrder(id string, req *dto.CreateOrderAPIRequest) (dto.OrderAPIResponse, error) {
 	order, err := u.repo.FindByID(id)
 	if err != nil {
 		return dto.OrderAPIResponse{}, err
@@ -96,6 +119,10 @@ func (u *orderUsecase) UpdateOrder(id string, req *dto.OrderAPIRequest) (dto.Ord
 
 func (u *orderUsecase) UpdateOrderStatus(id string, status string) error {
 	return u.repo.UpdateStatus(id, status)
+}
+
+func (u *orderUsecase) UpdateOrderStatusByInvoiceID(invoiceID string, status string) error {
+	return u.repo.UpdateOrderStatusByInvoiceID(invoiceID, status)
 }
 
 func (u *orderUsecase) DeleteOrder(id string) error {

@@ -6,8 +6,7 @@ import (
 )
 
 type OrderAPIResponse struct {
-	ID        uint       `json:"id"`
-	ProductID uint       `json:"product_id"`
+	InvoiceID string     `json:"invoice_id,omitempty"`
 	Quantity  int        `json:"quantity"`
 	Total     float64    `json:"total"`
 	Status    string     `json:"status"`
@@ -21,12 +20,16 @@ type APIResponse struct {
 }
 
 func MapToOrderDTO(order *domain.OrderModel) OrderAPIResponse {
+	invoiceID := ""
+	if order.Invoice != nil && order.Invoice.InvoiceID != nil {
+		invoiceID = *order.Invoice.InvoiceID
+	}
+
 	return OrderAPIResponse{
-		ID:        order.ID,
-		ProductID: order.ProductID,
 		Quantity:  order.Quantity,
 		Total:     order.Total,
 		Status:    order.Status,
+		InvoiceID: invoiceID,
 		CreatedAt: &order.CreatedAt,
 		UpdatedAt: &order.UpdatedAt,
 	}

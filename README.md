@@ -101,9 +101,9 @@ curl -X POST http://localhost:8080/orders \
 curl http://localhost:8080/orders
 ```
 
-**Update Order Status:**
+**Update Order Status by Invoice ID:**
 ```bash
-curl -X PATCH http://localhost:8080/orders/1/status \
+curl -X PATCH http://localhost:8080/orders/invoice/INV-12345/status \
 -H "Content-Type: application/json" \
 -d '{
   "status": "Processing"
@@ -125,15 +125,15 @@ curl -X DELETE http://localhost:8080/orders/1
 curl -X POST http://localhost:8082/payments \
 -H "Content-Type: application/json" \
 -d '{
-  "order_id": 1,
+  "invoice_id": "INV-12345",
   "amount": 4999.98
 }'
 ```
 
 **Get Payment Status:**
-*(Aggregates and retrieves the status of the payment, order details, and product name across multiple microservices).*
+*(Retrieves the status of the payment and order total).*
 ```bash
-curl http://localhost:8082/payments/1/status
+curl http://localhost:8082/payments/invoice/INV-12345/status
 ```
 
 *Example Response:*
@@ -141,9 +141,9 @@ curl http://localhost:8082/payments/1/status
 {
   "message": "Payment status retrieved successfully",
   "data": {
-    "order_id": 1,
-    "product_name": "MacBook Pro M3",
-    "total": 4999.98
+    "invoice_id": "INV-12345",
+    "total": 4999.98,
+    "payment_status": "COMPLETED"
   }
 }
 ```

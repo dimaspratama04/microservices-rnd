@@ -16,9 +16,11 @@ func NewOrderHandler(app *fiber.App, usecase usecase.OrderUsecase) {
 
 	app.Get("/orders", handler.GetOrders)
 	app.Get("/orders/:id", handler.GetOrderByID)
+	app.Get("/orders/invoice/:invoiceId", handler.GetOrderByInvoiceID)
 	app.Post("/orders", handler.CreateOrder)
 	app.Put("/orders/:id", handler.UpdateOrder)
 	app.Patch("/orders/:id/status", handler.UpdateOrderStatus)
+	app.Patch("/orders/invoice/:invoiceId/status", handler.UpdateOrderStatusByInvoiceID)
 	app.Delete("/orders/:id", handler.DeleteOrder)
 }
 
@@ -51,14 +53,26 @@ func (h *OrderHandler) GetOrderByID(c *fiber.Ctx) error {
 	})
 }
 
+func (h *OrderHandler) GetOrderByInvoiceID(c *fiber.Ctx) error {
+	invoiceID := c.Params("invoiceId")
+	order, err := h.usecase.GetOrderByInvoiceID(invoiceID)
+	if err != nil {
+		return c.Status(404).JSON(dto.APIResponse{Message: "Order not found"})
+	}
+	return c.JSON(dto.APIResponse{
+		Message: "Order retrieved successfully",
+		Data:    order,
+	})
+}
+
 func (h *OrderHandler) CreateOrder(c *fiber.Ctx) error {
-	var payload dto.OrderAPIRequest
+	var payload dto.CreateOrderAPIRequest
 
 	if err := c.BodyParser(&payload); err != nil {
 		return c.Status(400).JSON(dto.APIResponse{Message: "Invalid request body"})
 	}
 
-	order, err := h.usecase.CreateOrder(&payload)
+	order, err := h.usecase.CreateOrder(c.UserContext(), &payload)
 	if err != nil {
 		return c.Status(400).JSON(dto.APIResponse{Message: err.Error()})
 	}
@@ -71,7 +85,7 @@ func (h *OrderHandler) CreateOrder(c *fiber.Ctx) error {
 
 func (h *OrderHandler) UpdateOrder(c *fiber.Ctx) error {
 	id := c.Params("id")
-	var payload dto.OrderAPIRequest
+	var payload dto.CreateOrderAPIRequest
 	if err := c.BodyParser(&payload); err != nil {
 		return c.Status(400).JSON(dto.APIResponse{Message: "Invalid request body"})
 	}
@@ -99,6 +113,27 @@ func (h *OrderHandler) UpdateOrderStatus(c *fiber.Ctx) error {
 
 	if err := h.usecase.UpdateOrderStatus(id, body.Status); err != nil {
 		return c.Status(404).JSON(dto.APIResponse{Message: err.Error()})
+	}
+
+	return c.JSON(dto.APIResponse{
+		Message: "Order status updated successfully",
+		Data:    fiber.Map{"status": body.Status},
+	})
+}
+
+func (h *OrderHandler) UpdateOrderStatusByInvoiceID(c *fiber.Ctx) error {
+	invoiceID := c.Params("invoiceId")
+	body := struct {
+		Status string `json:"status"`
+	}{}
+
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(400).JSON(dto.APIResponse{Message: "Invalid request body"})
+	}
+
+	err := h.usecase.UpdateOrderStatusByInvoiceID(invoiceID, body.Status)
+	if err != nil {
+		return c.Status(400).JSON(dto.APIResponse{Message: err.Error()})
 	}
 
 	return c.JSON(dto.APIResponse{

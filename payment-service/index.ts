@@ -2,8 +2,11 @@ import { Elysia } from "elysia";
 import { opentelemetry } from "@elysiajs/opentelemetry";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
-import { trace } from "@opentelemetry/api";
+import { trace, propagation } from "@opentelemetry/api";
+import { W3CTraceContextPropagator } from "@opentelemetry/core";
 import { connectQueue } from "./src/queue/rabbitmq.js";
+
+propagation.setGlobalPropagator(new W3CTraceContextPropagator());
 import { paymentRoutes } from "./src/routes/payment.js";
 
 // Connect to RabbitMQ

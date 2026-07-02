@@ -1,10 +1,10 @@
 export interface PaymentRequestDTO {
-    order_id: number;
-    amount: number;
+  invoice_id: string;
+  amount: number;
 }
 
 export interface PaymentStatusResponseDTO {
-    order_id: number;
-    product_name: string;
-    total: number;
+  invoice_id: string;
+  total: number;
+  payment_status: string;
 }

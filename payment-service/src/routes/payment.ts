@@ -5,18 +5,21 @@ import { payments } from "../db/schema.js";
 import { channel } from "../queue/rabbitmq.js";
 import { successResponse, errorResponse } from "../dto/web_response.js";
 import { PaymentRequestDTO, PaymentStatusResponseDTO } from "../dto/payment_dto.js";
+import { context, propagation } from "@opentelemetry/api";
 
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || "http://localhost:8080";
 const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL || "http://localhost:8081";
 
 export const paymentRoutes = new Elysia()
   .post("/payments", async ({ body, set }) => {
-    const { order_id, amount } = body as PaymentRequestDTO;
+    const { invoice_id, amount } = body as PaymentRequestDTO;
 
     // Validate Order Existence
     let orderData: any;
     try {
-      const orderResp = await fetch(`${ORDER_SERVICE_URL}/orders/${order_id}`);
+      const headers = {};
+      propagation.inject(context.active(), headers);
+      const orderResp = await fetch(`${ORDER_SERVICE_URL}/orders/invoice/${invoice_id}`, { headers });
       if (orderResp.status !== 200) {
         set.status = 400;
         return errorResponse("Order not found or order service unavailable");
@@ -38,7 +41,7 @@ export const paymentRoutes = new Elysia()
     // Persist to DB
     try {
       await db.insert(payments).values({
-        order_id,
+        invoice_id,
         amount: amount.toString(),
         status: "COMPLETED",
       });
@@ -56,21 +59,22 @@ export const paymentRoutes = new Elysia()
 
     // Update Order Status to SHIPPED
     try {
-      await fetch(`${ORDER_SERVICE_URL}/orders/${order_id}/status`, {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      propagation.inject(context.active(), headers);
+      await fetch(`${ORDER_SERVICE_URL}/orders/invoice/${invoice_id}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ status: "SHIPPED" }),
       });
-      console.log(`Updated order ${order_id} status to SHIPPED`);
+      console.log(`Updated order invoice ${invoice_id} status to SHIPPED`);
     } catch (error) {
-      console.error(`Failed to update order ${order_id} status:`, error);
+      console.error(`Failed to update order status:`, error);
     }
 
     return successResponse("Payment processed successfully", body);
   })
-  .get("/payments/:id/status", async ({ params: { id }, set }) => {
-    const paymentId = Number(id);
-    const paymentRecords = await db.select().from(payments).where(eq(payments.id, paymentId));
+  .get("/payments/invoice/:invoiceId/status", async ({ params: { invoiceId }, set }) => {
+    const paymentRecords = await db.select().from(payments).where(eq(payments.invoice_id, invoiceId));
     if (paymentRecords.length === 0) {
       set.status = 404;
       return errorResponse("Payment not found");
@@ -79,7 +83,9 @@ export const paymentRoutes = new Elysia()
 
     let orderData: any;
     try {
-      const orderResp = await fetch(`${ORDER_SERVICE_URL}/orders/${payment.order_id}`);
+      const headers = {};
+      propagation.inject(context.active(), headers);
+      const orderResp = await fetch(`${ORDER_SERVICE_URL}/orders/invoice/${payment.invoice_id}`, { headers });
       if (orderResp.status === 200) {
         orderData = await orderResp.json();
       }
@@ -87,27 +93,10 @@ export const paymentRoutes = new Elysia()
       console.error(e);
     }
 
-    let productName = "Unknown Product";
-    const orderId = orderData.data.id;
-    const productId = orderData.data.product_id;
-    const paymentTotal = orderData.data.total;
-
-    if (orderData && orderData.data && orderData.data.product_id) {
-      try {
-        const productResp = await fetch(`${PRODUCT_SERVICE_URL}/products/${productId}`);
-        if (productResp.status === 200) {
-          const productData = (await productResp.json()) as any;
-          productName = productData.data.name;
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
     const statusData: PaymentStatusResponseDTO = {
-      order_id: orderId,
-      product_name: productName,
-      total: paymentTotal,
+      invoice_id: invoiceId,
+      total: orderData.data.total,
+      payment_status: payment.status,
     };
     return successResponse("Payment status retrieved successfully", statusData);
   });

@@ -2,7 +2,7 @@ import { pgTable, serial, integer, decimal, varchar, timestamp } from "drizzle-o
 
 export const payments = pgTable("payments", {
     id: serial("id").primaryKey(),
-    order_id: integer("order_id").notNull(),
+    invoice_id: varchar("invoice_id", { length: 50 }).notNull(),
     amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
     status: varchar("status", { length: 50 }).notNull(),
     created_at: timestamp("created_at").defaultNow(),
