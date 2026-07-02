@@ -1,18 +1,19 @@
 # Microservices R&D Project
 
-This project is a microservices-based architecture research and development environment featuring multiple services built with different technologies (Java, Go, TypeScript). It demonstrates CRUD operations, inter-service communication, and message queuing.
+This project is a microservices-based architecture research and development environment featuring multiple services built with different technologies (Java, Go, TypeScript). It demonstrates CRUD operations, inter-service communication, message queuing, and distributed tracing.
 
 ## Architecture Overview
 
-| Service                  | Language/Runtime | Framework       | Database                  | Others                |
-| ------------------------ | ---------------- | --------------- | ------------------------- | --------------------- |
-| **Product Service**      | Java 17          | Spring Boot 3.2 | PostgreSQL, H2 (test)     | Maven                 |
-| **Order Service**        | Go 1.25          | Fiber v2        | PostgreSQL, SQLite (test) | GORM                  |
-| **Payment Service**      | TypeScript (Bun) | Elysia          | PostgreSQL                | Drizzle ORM, RabbitMQ |
-| **Notification Service** | Java 17          | Spring Boot 4.1 | -                         | Gradle, RabbitMQ      |
+| Service                  | Language/Runtime | Framework       | Database                  | Others                                |
+| ------------------------ | ---------------- | --------------- | ------------------------- | ------------------------------------- |
+| **Product Service**      | Java 17          | Spring Boot 3.2 | PostgreSQL, H2 (test)     | Maven, OpenTelemetry                  |
+| **Order Service**        | Go 1.25          | Fiber v2        | PostgreSQL, SQLite (test) | GORM, OpenTelemetry                   |
+| **Payment Service**      | TypeScript (Bun) | Elysia          | PostgreSQL                | Drizzle ORM, RabbitMQ, OpenTelemetry  |
+| **Notification Service** | Java 17          | Spring Boot 4.1 | -                         | Gradle, RabbitMQ, OpenTelemetry       |
 
-- **PostgreSQL:** Shared database instance with separate databases for each service.
+- **PostgreSQL:** Shared database instance with separate databases for each service. All financial data (`price`, `total`, `amount`) is consistently stored as `DECIMAL(12, 2)`.
 - **RabbitMQ:** Message broker for asynchronous communication between Payment and Notification services.
+- **Jaeger (OpenTelemetry):** Distributed tracing implemented across all services. Every API response includes an `X-Request-Id` header mapping to the active Trace ID.
 
 ## Prerequisites
 
@@ -39,12 +40,18 @@ This project is a microservices-based architecture research and development envi
    docker ps
    ```
 
-## Testing CRUD Operations
+4. **Access Jaeger UI (Tracing):**
+   Navigate to [http://localhost:16686](http://localhost:16686) in your browser to view traces.
+
+---
+
+## API Documentation & Testing
+
+All API endpoints return standard JSON responses formatted as `{"message": "...", "data": ...}` and include an `X-Request-Id` header for tracing.
 
 ### 1. Product Service (Port 8081)
 
 **Create Product:**
-
 ```bash
 curl -X POST http://localhost:8081/products \
 -H "Content-Type: application/json" \
@@ -55,13 +62,11 @@ curl -X POST http://localhost:8081/products \
 ```
 
 **Get All Products:**
-
 ```bash
 curl http://localhost:8081/products
 ```
 
 **Update Product:**
-
 ```bash
 curl -X PUT http://localhost:8081/products/1 \
 -H "Content-Type: application/json" \
@@ -72,7 +77,6 @@ curl -X PUT http://localhost:8081/products/1 \
 ```
 
 **Delete Product:**
-
 ```bash
 curl -X DELETE http://localhost:8081/products/1
 ```
@@ -82,35 +86,31 @@ curl -X DELETE http://localhost:8081/products/1
 ### 2. Order Service (Port 8080)
 
 **Create Order:**
-
+*(Automatically fetches the product price from Product Service and calculates the total)*
 ```bash
 curl -X POST http://localhost:8080/orders \
 -H "Content-Type: application/json" \
 -d '{
   "product_id": 1,
-  "quantity": 2,
-  "total": 4999.98
+  "quantity": 2
 }'
 ```
 
 **Get All Orders:**
-
 ```bash
 curl http://localhost:8080/orders
 ```
 
 **Update Order Status:**
-
 ```bash
-curl -X PUT http://localhost:8080/orders/1 \
+curl -X PATCH http://localhost:8080/orders/1/status \
 -H "Content-Type: application/json" \
 -d '{
-  "status": "Shipped"
+  "status": "Processing"
 }'
 ```
 
 **Delete Order:**
-
 ```bash
 curl -X DELETE http://localhost:8080/orders/1
 ```
@@ -120,24 +120,42 @@ curl -X DELETE http://localhost:8080/orders/1
 ### 3. Payment Service (Port 8082)
 
 **Process Payment:**
-_(This will also trigger a notification event to RabbitMQ)_
-
+*(Validates the amount against Order Service. On success, it triggers a RabbitMQ notification and automatically updates the order status to SHIPPED).*
 ```bash
 curl -X POST http://localhost:8082/payments \
 -H "Content-Type: application/json" \
 -d '{
   "order_id": 1,
-  "amount": 4999.98,
-  "currency": "USD"
+  "amount": 4999.98
 }'
 ```
 
+**Get Payment Status:**
+*(Aggregates and retrieves the status of the payment, order details, and product name across multiple microservices).*
+```bash
+curl http://localhost:8082/payments/1/status
+```
+
+*Example Response:*
+```json
+{
+  "message": "Payment status retrieved successfully",
+  "data": {
+    "order_id": 1,
+    "product_name": "MacBook Pro M3",
+    "total": 4999.98
+  }
+}
+```
+
+---
+
 ## Development & Testing
 
-- **Go Tests:** `cd order-service && go test -v`
+- **Go Tests (Order):** `cd order-service && go test -v`
 - **Java Tests (Product):** `cd product-service && ./mvnw test`
 - **Java Tests (Notification):** `cd notification-service && ./gradlew test`
 
 ## Environment Variables
 
-Check `docker-compose.yml` for database connections and service discovery URLs.
+Check `docker-compose.yml` for database connections, service discovery URLs, and OpenTelemetry configurations.
