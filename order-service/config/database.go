@@ -21,7 +21,7 @@ func InitDB() *gorm.DB {
 	}
 	
 	// Auto Migrate
-	db.AutoMigrate(&domain.Order{})
+	db.AutoMigrate(&domain.OrderModel{})
 	
 	return db
 }

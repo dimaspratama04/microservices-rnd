@@ -3,6 +3,7 @@ package ecommerce;
 import ecommerce.model.Product;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -32,7 +33,7 @@ class ProductServiceApplicationTests {
 	void testProductCRUD() throws Exception {
 		Product product = new Product();
 		product.setName("Laptop");		
-		product.setPrice(999.99);
+		product.setPrice(new BigDecimal("999.99"));
 
 		// Create
 		String responseJson = mockMvc.perform(post("/products")

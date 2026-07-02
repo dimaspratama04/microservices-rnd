@@ -8,10 +8,11 @@ import (
 	"os"
 	"testing"
 
+	"order-service/domain"
+
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"order-service/domain"
 )
 
 func setupTestDB() *gorm.DB {
@@ -19,7 +20,7 @@ func setupTestDB() *gorm.DB {
 	if err != nil {
 		panic("failed to connect database")
 	}
-	db.AutoMigrate(&domain.Order{})
+	db.AutoMigrate(&domain.OrderModel{})
 	return db
 }
 
@@ -42,7 +43,7 @@ func TestOrderCRUD(t *testing.T) {
 	app := SetupApp(db)
 
 	// 1. Create - Success
-	newOrder := domain.Order{ProductID: 1, Quantity: 2, Total: 100.0}
+	newOrder := domain.OrderModel{ProductID: 1, Quantity: 2, Total: 100.0}
 	body, _ := json.Marshal(newOrder)
 	req := httptest.NewRequest("POST", "/orders", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -53,13 +54,13 @@ func TestOrderCRUD(t *testing.T) {
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
 	assert.Equal(t, "Order created successfully", result["message"])
-	
+
 	data := result["data"].(map[string]interface{})
 	assert.Equal(t, float64(1), data["product_id"])
 	assert.Equal(t, "Pending", data["status"])
 
 	// 1.1 Create - Fail (Product Not Found)
-	newOrderFail := domain.Order{ProductID: 99, Quantity: 1, Total: 50.0}
+	newOrderFail := domain.OrderModel{ProductID: 99, Quantity: 1, Total: 50.0}
 	bodyFail, _ := json.Marshal(newOrderFail)
 	reqFail := httptest.NewRequest("POST", "/orders", bytes.NewBuffer(bodyFail))
 	reqFail.Header.Set("Content-Type", "application/json")
@@ -74,7 +75,7 @@ func TestOrderCRUD(t *testing.T) {
 	req = httptest.NewRequest("GET", "/orders", nil)
 	resp, _ = app.Test(req)
 	assert.Equal(t, 200, resp.StatusCode)
-	
+
 	var readAllResult map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&readAllResult)
 	assert.Equal(t, "Orders retrieved successfully", readAllResult["message"])
@@ -96,7 +97,7 @@ func TestOrderCRUD(t *testing.T) {
 	var updateResult map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&updateResult)
 	assert.Equal(t, "Order updated successfully", updateResult["message"])
-	
+
 	updatedData := updateResult["data"].(map[string]interface{})
 	assert.Equal(t, "Paid", updatedData["status"])
 
@@ -104,7 +105,7 @@ func TestOrderCRUD(t *testing.T) {
 	req = httptest.NewRequest("DELETE", "/orders/1", nil)
 	resp, _ = app.Test(req)
 	assert.Equal(t, 200, resp.StatusCode)
-	
+
 	var deleteResult map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&deleteResult)
 	assert.Equal(t, "Order deleted successfully", deleteResult["message"])

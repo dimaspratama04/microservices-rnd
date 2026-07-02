@@ -74,6 +74,7 @@ services:
       - DB_URL=postgres://user:password@postgres:5432/payment_db
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
       - ORDER_SERVICE_URL=http://order-service:8080
+      - PRODUCT_SERVICE_URL=http://product-service:8081
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - OTEL_SERVICE_NAME=payment-service
     depends_on:
@@ -111,8 +112,8 @@ services:
       - COLLECTOR_OTLP_ENABLED=true
     ports:
       - "16686:16686" # UI
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
 
 volumes:
   postgres_data:

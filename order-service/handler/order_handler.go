@@ -1,16 +1,17 @@
 package handler
 
 import (
-	"order-service/domain"
+	"order-service/dto"
+	"order-service/usecase"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type OrderHandler struct {
-	usecase domain.OrderUsecase
+	usecase usecase.OrderUsecase
 }
 
-func NewOrderHandler(app *fiber.App, usecase domain.OrderUsecase) {
+func NewOrderHandler(app *fiber.App, usecase usecase.OrderUsecase) {
 	handler := &OrderHandler{usecase}
 
 	app.Get("/orders", handler.GetOrders)
@@ -24,17 +25,17 @@ func NewOrderHandler(app *fiber.App, usecase domain.OrderUsecase) {
 func (h *OrderHandler) GetOrders(c *fiber.Ctx) error {
 	orders, err := h.usecase.GetOrders()
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		return c.Status(500).JSON(dto.APIResponse{Message: err.Error()})
 	}
 	if len(orders) == 0 {
-		return c.JSON(fiber.Map{
-			"message": "No orders found",
-			"data":    []domain.Order{},
+		return c.JSON(dto.APIResponse{
+			Message: "No orders found",
+			Data:    []dto.OrderAPIResponse{},
 		})
 	}
-	return c.JSON(fiber.Map{
-		"message": "Orders retrieved successfully",
-		"data":    orders,
+	return c.JSON(dto.APIResponse{
+		Message: "Orders retrieved successfully",
+		Data:    orders,
 	})
 }
 
@@ -42,41 +43,47 @@ func (h *OrderHandler) GetOrderByID(c *fiber.Ctx) error {
 	id := c.Params("id")
 	order, err := h.usecase.GetOrderByID(id)
 	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "Order not found"})
+		return c.Status(404).JSON(dto.APIResponse{Message: "Order not found"})
 	}
-	return c.JSON(order)
+	return c.JSON(dto.APIResponse{
+		Message: "Order retrieved successfully",
+		Data:    order,
+	})
 }
 
 func (h *OrderHandler) CreateOrder(c *fiber.Ctx) error {
-	order := new(domain.Order)
-	if err := c.BodyParser(order); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+	var payload dto.OrderAPIRequest
+
+	if err := c.BodyParser(&payload); err != nil {
+		return c.Status(400).JSON(dto.APIResponse{Message: "Invalid request body"})
 	}
 
-	if err := h.usecase.CreateOrder(order); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	order, err := h.usecase.CreateOrder(&payload)
+	if err != nil {
+		return c.Status(400).JSON(dto.APIResponse{Message: err.Error()})
 	}
 
-	return c.Status(201).JSON(fiber.Map{
-		"message": "Order created successfully",
-		"data":    order,
+	return c.Status(201).JSON(dto.APIResponse{
+		Message: "Order created successfully",
+		Data:    order,
 	})
 }
 
 func (h *OrderHandler) UpdateOrder(c *fiber.Ctx) error {
 	id := c.Params("id")
-	order := new(domain.Order)
-	if err := c.BodyParser(order); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+	var payload dto.OrderAPIRequest
+	if err := c.BodyParser(&payload); err != nil {
+		return c.Status(400).JSON(dto.APIResponse{Message: "Invalid request body"})
 	}
 
-	if err := h.usecase.UpdateOrder(id, order); err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": err.Error()})
+	order, err := h.usecase.UpdateOrder(id, &payload)
+	if err != nil {
+		return c.Status(404).JSON(dto.APIResponse{Message: err.Error()})
 	}
 
-	return c.JSON(fiber.Map{
-		"message": "Order updated successfully",
-		"data":    order,
+	return c.JSON(dto.APIResponse{
+		Message: "Order updated successfully",
+		Data:    order,
 	})
 }
 
@@ -87,27 +94,27 @@ func (h *OrderHandler) UpdateOrderStatus(c *fiber.Ctx) error {
 	}{}
 
 	if err := c.BodyParser(&body); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+		return c.Status(400).JSON(dto.APIResponse{Message: "Invalid request body"})
 	}
 
 	if err := h.usecase.UpdateOrderStatus(id, body.Status); err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": err.Error()})
+		return c.Status(404).JSON(dto.APIResponse{Message: err.Error()})
 	}
 
-	return c.JSON(fiber.Map{
-		"message": "Order status updated successfully",
-		"status":  body.Status,
+	return c.JSON(dto.APIResponse{
+		Message: "Order status updated successfully",
+		Data:    fiber.Map{"status": body.Status},
 	})
 }
 
 func (h *OrderHandler) DeleteOrder(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if err := h.usecase.DeleteOrder(id); err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "Order not found"})
+		return c.Status(404).JSON(dto.APIResponse{Message: "Order not found"})
 	}
 
-	return c.JSON(fiber.Map{
-		"message": "Order deleted successfully",
-		"id":      id,
+	return c.JSON(dto.APIResponse{
+		Message: "Order deleted successfully",
+		Data:    fiber.Map{"id": id},
 	})
 }

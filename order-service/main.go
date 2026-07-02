@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/contrib/otelfiber/v2"
 	"github.com/gofiber/fiber/v2"
+	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 
 	"order-service/config"
@@ -18,6 +19,13 @@ import (
 func SetupApp(db *gorm.DB) *fiber.App {
 	app := fiber.New()
 	app.Use(otelfiber.Middleware())
+	app.Use(func(c *fiber.Ctx) error {
+		span := trace.SpanFromContext(c.UserContext())
+		if span.SpanContext().IsValid() {
+			c.Set("X-Request-Id", span.SpanContext().TraceID().String())
+		}
+		return c.Next()
+	})
 
 	// Init layers
 	orderRepo := repository.NewOrderRepository(db)

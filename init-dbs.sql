@@ -9,7 +9,7 @@ CREATE DATABASE notification_db;
 CREATE TABLE IF NOT EXISTS products (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255),
-    price DOUBLE PRECISION
+    price DECIMAL(12, 2)
 );
 
 -- Order Service Schema
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS orders (
     deleted_at TIMESTAMP WITH TIME ZONE,
     product_id INTEGER,
     quantity INTEGER,
-    total DOUBLE PRECISION,
+    total DECIMAL(12, 2),
     status VARCHAR(255)
 );
 CREATE INDEX IF NOT EXISTS idx_orders_deleted_at ON orders(deleted_at);
@@ -31,7 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_orders_deleted_at ON orders(deleted_at);
 CREATE TABLE IF NOT EXISTS payments (
     id BIGSERIAL PRIMARY KEY,
     order_id INTEGER NOT NULL,
-    amount DOUBLE PRECISION NOT NULL,
+    amount DECIMAL(12, 2) NOT NULL,
     status VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
